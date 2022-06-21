@@ -55,6 +55,19 @@ If you find this project useful in your research, please consider citing:
 }
 ```
 
+## data
+GTA5:
+链接：https://pan.xunlei.com/s/VN4qJvetUkwKWXeoVo-6q8D9A1#
+提取码：ti6v
+
+SYNTHIA_RAND_CITYSCAPRES:
+链接：https://pan.xunlei.com/s/VN4qKAsx0cq5IXodOfSSTyedA1#
+提取码：ce5g
+
+CITYSCAPRES:
+链接：https://pan.baidu.com/s/1ja0JpBXq8LpZcqnXkAC_hA 
+提取码：e55t 
+
 ## Setup Environment
 
 For this project, we used python 3.8.5. We recommend setting up a new virtual
