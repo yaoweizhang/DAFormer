@@ -182,7 +182,7 @@ class DACS(UDADecorator):
         return feat_loss, feat_log
 
     def forward_train(self, img, img_metas, gt_semantic_seg, target_img,
-                      target_img_metas):
+                      target_img_metas, ref_img=None, ref_img_metas=None):
         """Forward function for training.
 
         Args:
@@ -279,6 +279,28 @@ class DACS(UDADecorator):
             pseudo_weight[:, -self.psweight_ignore_bottom:, :] = 0
         gt_pixel_weight = torch.ones((pseudo_weight.shape), device=dev)
 
+        if ref_img is not None:
+            # Generate pseudo-label for ref img
+            ref_ema_logits = self.get_ema_model().encode_decode(
+                ref_img, ref_img_metas)
+
+            ref_ema_softmax = torch.softmax(ref_ema_logits.detach(), dim=1)
+            ref_pseudo_prob, ref_pseudo_label = torch.max(ref_ema_softmax, dim=1)
+            ref_ps_large_p = ref_pseudo_prob.ge(self.pseudo_threshold).long() == 1
+            ref_ps_size = np.size(np.array(ref_pseudo_label.cpu()))
+            ref_pseudo_weight = torch.sum(ref_ps_large_p).item() / ref_ps_size
+            ref_pseudo_weight = ref_pseudo_weight * torch.ones(
+                ref_pseudo_prob.shape, device=dev)
+
+            if self.psweight_ignore_top > 0:
+                # Don't trust pseudo-labels in regions with potential
+                # rectification artifacts. This can lead to a pseudo-label
+                # drift from sky towards building or traffic light.
+                ref_pseudo_weight[:, :self.psweight_ignore_top, :] = 0
+            if self.psweight_ignore_bottom > 0:
+                ref_pseudo_weight[:, -self.psweight_ignore_bottom:, :] = 0
+
+
         # Apply mixing
         mixed_img, mixed_lbl = [None] * batch_size, [None] * batch_size
         mix_masks = get_class_masks(gt_semantic_seg)
@@ -295,6 +317,23 @@ class DACS(UDADecorator):
         mixed_img = torch.cat(mixed_img)
         mixed_lbl = torch.cat(mixed_lbl)
 
+        if ref_img is not None:
+            # Apply mixing for ref img
+            ref_mixed_img, ref_mixed_lbl = [None] * batch_size, [None] * batch_size
+            #ref_mix_masks = get_class_masks(gt_semantic_seg)
+
+            for i in range(batch_size):
+                strong_parameters['mix'] = mix_masks[i]
+                ref_mixed_img[i], ref_mixed_lbl[i] = strong_transform(
+                    strong_parameters,
+                    data=torch.stack((img[i], ref_img[i])),
+                    target=torch.stack((gt_semantic_seg[i][0], ref_pseudo_label[i])))
+                _, ref_pseudo_weight[i] = strong_transform(
+                    strong_parameters,
+                    target=torch.stack((gt_pixel_weight[i], ref_pseudo_weight[i])))
+            ref_mixed_img = torch.cat(ref_mixed_img)
+            ref_mixed_lbl = torch.cat(ref_mixed_lbl)
+
         # Train on mixed images
         mix_losses = self.get_model().forward_train(
             mixed_img, img_metas, mixed_lbl, pseudo_weight, return_feat=True)
@@ -304,6 +343,15 @@ class DACS(UDADecorator):
         log_vars.update(mix_log_vars)
         mix_loss.backward()
 
+        if ref_img is not None:
+            ref_mix_losses = self.get_model().forward_train(
+                ref_mixed_img, img_metas, ref_mixed_lbl, ref_pseudo_weight, return_feat=True)
+            ref_mix_losses.pop('features')
+            ref_mix_losses = add_prefix(ref_mix_losses, 'ref_mix')
+            ref_mix_loss, ref_mix_log_vars = self._parse_losses(ref_mix_losses)
+            log_vars.update(ref_mix_log_vars)
+            ref_mix_loss.backward()
+
         if self.local_iter % self.debug_img_interval == 0:
             out_dir = os.path.join(self.train_cfg['work_dir'],
                                    'class_mix_debug')
@@ -311,8 +359,12 @@ class DACS(UDADecorator):
             vis_img = torch.clamp(denorm(img, means, stds), 0, 1)
             vis_trg_img = torch.clamp(denorm(target_img, means, stds), 0, 1)
             vis_mixed_img = torch.clamp(denorm(mixed_img, means, stds), 0, 1)
+            if ref_img is not None:
+                vis_ref_img = torch.clamp(denorm(ref_img, means, stds), 0, 1)
+                vis_ref_mixed_img = torch.clamp(denorm(ref_mixed_img, means, stds), 0, 1)
             for j in range(batch_size):
-                rows, cols = 2, 5
+                rows = 3 if ref_img is not None else 2 
+                cols = 5
                 fig, axs = plt.subplots(
                     rows,
                     cols,
@@ -347,6 +399,17 @@ class DACS(UDADecorator):
                     axs[1][3], mixed_lbl[j], 'Seg Targ', cmap='cityscapes')
                 subplotimg(
                     axs[0][3], pseudo_weight[j], 'Pseudo W.', vmin=0, vmax=1)
+                if ref_img is not None:
+                    subplotimg(axs[2][0], vis_ref_img[j], 'Ref Image')
+                    subplotimg(
+                        axs[2][1],
+                        ref_pseudo_label[j],
+                        'Ref Seg (Pseudo) GT',
+                        cmap='cityscapes')
+                    subplotimg(
+                        axs[2][2], vis_ref_mixed_img[j][0], 'Mix Image (ref)')
+                    subplotimg(
+                        axs[2][3], ref_mixed_lbl[j], 'Seg Ref', cmap='cityscapes')
                 if self.debug_fdist_mask is not None:
                     subplotimg(
                         axs[0][4],
@@ -359,6 +422,12 @@ class DACS(UDADecorator):
                         self.debug_gt_rescale[j],
                         'Scaled GT',
                         cmap='cityscapes')
+                    if ref_img is not None:
+                        subplotimg(
+                            axs[2][4],
+                            self.debug_gt_rescale[j],
+                            'Scaled GT',
+                            cmap='cityscapes')
                 for ax in axs.flat:
                     ax.axis('off')
                 plt.savefig(

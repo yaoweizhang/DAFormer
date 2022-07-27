@@ -156,6 +156,8 @@ class CustomDataset(Dataset):
                     img_info['ann'] = dict(seg_map=seg_map)
                 img_infos.append(img_info)
 
+        img_infos.sort(key=lambda x: x['filename'])
+
         print_log(
             f'Loaded {len(img_infos)} images from {img_dir}',
             logger=get_root_logger())
