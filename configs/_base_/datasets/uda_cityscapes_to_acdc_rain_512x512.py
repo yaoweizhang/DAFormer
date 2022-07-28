@@ -94,7 +94,7 @@ data = dict(
             img_dir='rgb_anon/rain/train_ref',
             img_suffix='_rgb_ref_anon.png',
             test_mode=True,
-            pipeline=acdc_rain_ref_train_pipeline),
+            pipeline=acdc_rain_ref_train_pipeline)
         ),
     val=dict(
         type='ACDCrainDataset',

@@ -390,9 +390,9 @@ class DACS(UDADecorator):
                     pseudo_label[j],
                     'Target Seg (Pseudo) GT',
                     cmap='cityscapes')
-                subplotimg(axs[0][2], vis_mixed_img[j], 'Mixed Image')
+                subplotimg(axs[1][2], vis_mixed_img[j], 'Mixed Image')
                 subplotimg(
-                    axs[1][2], mix_masks[j][0], 'Domain Mask', cmap='gray')
+                    axs[0][2], mix_masks[j][0], 'Domain Mask', cmap='gray')
                 # subplotimg(axs[0][3], pred_u_s[j], "Seg Pred",
                 #            cmap="cityscapes")
                 subplotimg(
@@ -407,7 +407,7 @@ class DACS(UDADecorator):
                         'Ref Seg (Pseudo) GT',
                         cmap='cityscapes')
                     subplotimg(
-                        axs[2][2], vis_ref_mixed_img[j][0], 'Mix Image (ref)')
+                        axs[2][2], vis_ref_mixed_img[j], 'Mix Image (ref)')
                     subplotimg(
                         axs[2][3], ref_mixed_lbl[j], 'Seg Ref', cmap='cityscapes')
                 if self.debug_fdist_mask is not None:

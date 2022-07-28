@@ -40,6 +40,17 @@ acdc_night_train_pipeline = [
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]
+acdc_night_ref_train_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(type='Resize', img_scale=(960, 512)),
+    dict(type='RandomCrop', crop_size=crop_size),
+    dict(type='RandomFlip', prob=0.5),
+    # dict(type='PhotoMetricDistortion'),  # is applied later in dacs.py
+    dict(type='Normalize', **img_norm_cfg),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
+    dict(type='DefaultFormatBundle'),
+    dict(type='Collect', keys=['img']),
+]
 test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
@@ -73,7 +84,14 @@ data = dict(
             data_root='data/ACDC/',
             img_dir='rgb_anon/night/train',
             ann_dir='gt/night/train',
-            pipeline=acdc_night_train_pipeline)
+            pipeline=acdc_night_train_pipeline),
+        ref=dict(
+            type='ACDCnightDataset',
+            data_root='data/ACDC/',
+            img_dir='rgb_anon/night/train_ref',
+            img_suffix='_rgb_ref_anon.png',
+            test_mode=True,
+            pipeline=acdc_night_ref_train_pipeline)
         ),
     val=dict(
         type='ACDCnightDataset',
