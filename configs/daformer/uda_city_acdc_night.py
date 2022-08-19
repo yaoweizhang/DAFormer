@@ -48,7 +48,7 @@ evaluation = dict(interval=4000, metric='mIoU')
 # Meta Information for Result Analysis
 name = 'cs2acdcnight_uda_warm_fdthings_rcs_croppl_a999_daformer_mitb5_s0'
 exp = 'basic'
-name_dataset = 'cityscapes2cityscapes'
+name_dataset = 'cityscapes2acdcnight'
 name_architecture = 'daformer_sepaspp_mitb5'
 name_encoder = 'mitb5'
 name_decoder = 'daformer_sepaspp'

@@ -1,21 +1,9 @@
 # dataset settings
-dataset_type = 'CityscapesDataset'
-data_root = 'data/cityscapes/'
+#dataset_type = 'CityscapesDataset'
+#data_root = 'data/cityscapes/'
 img_norm_cfg = dict(
     mean=[58.413, 45.7, 34.42], std=[41.507, 37.797, 31.376], to_rgb=True)
 crop_size = (512, 512)
-#gta_train_pipeline = [
-#    dict(type='LoadImageFromFile'),
-#    dict(type='LoadAnnotations'),
-#    dict(type='Resize', img_scale=(1280, 720)),
-#    dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
-#    dict(type='RandomFlip', prob=0.5),
-#    # dict(type='PhotoMetricDistortion'),  # is applied later in dacs.py
-#    dict(type='Normalize', **img_norm_cfg),
-#    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
-#    dict(type='DefaultFormatBundle'),
-#    dict(type='Collect', keys=['img', 'gt_semantic_seg']),
-#]
 cityscapes_train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations'),
@@ -31,7 +19,7 @@ cityscapes_train_pipeline = [
 acdc_night_train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations'),
-    dict(type='Resize', img_scale=(960, 512)),
+    dict(type='Resize', img_scale=(960, 540)),#original 1920*1080
     dict(type='RandomCrop', crop_size=crop_size),
     dict(type='RandomFlip', prob=0.5),
     # dict(type='PhotoMetricDistortion'),  # is applied later in dacs.py
@@ -44,7 +32,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(960, 512),
+        img_scale=(960, 540),
         # MultiScaleFlipAug is disabled by not providing img_ratios and
         # setting flip=False
         # img_ratios=[0.5, 0.75, 1.0, 1.25, 1.5, 1.75],
