@@ -37,9 +37,10 @@ def get_rcs_class_probs(data_root, temperature):
 @DATASETS.register_module()
 class UDADataset(object):
 
-    def __init__(self, source, target, cfg):
+    def __init__(self, source, target, ref=None, cfg=None):
         self.source = source
         self.target = target
+        self.ref = ref
         self.ignore_index = target.ignore_index
         self.CLASSES = target.CLASSES
         self.PALETTE = target.PALETTE
@@ -101,10 +102,15 @@ class UDADataset(object):
         i2 = np.random.choice(range(len(self.target)))
         s2 = self.target[i2]
 
-        return {
+        ret = {
             **s1, 'target_img_metas': s2['img_metas'],
             'target_img': s2['img']
         }
+        if self.ref is not None:
+            s3 = self.ref[i2]
+            ret.update({'ref_img_metas': s3['img_metas'], 'ref_img': s3['img']})
+
+        return ret
 
     def __getitem__(self, idx):
         if self.rcs_enabled:
@@ -112,10 +118,15 @@ class UDADataset(object):
         else:
             s1 = self.source[idx // len(self.target)]
             s2 = self.target[idx % len(self.target)]
-            return {
+            ret = {
                 **s1, 'target_img_metas': s2['img_metas'],
                 'target_img': s2['img']
             }
+
+            if self.ret is not None:
+                s3 = self.ref[idx % len(self.target)]
+                ret.update({'ref_img_metas': s3['img_metas'], 'ref_img': s3['img']})
+            return ret
 
     def __len__(self):
         return len(self.source) * len(self.target)
